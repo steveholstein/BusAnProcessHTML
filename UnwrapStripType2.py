@@ -43,8 +43,8 @@ PROCESS_ALL_FILES = True
 # Specify individual files located inside INPUT_DIRECTORY (Used when PROCESS_ALL_FILES = False)
 INPUT_FILES = [
     Path(INPUT_DIRECTORY) / "view-source_https___www.afr.com_companies.html",
-    #Path(INPUT_DIRECTORY) / "another_page.html",
-    #Path(INPUT_DIRECTORY) / "sample_article.html",
+    # Path(INPUT_DIRECTORY) / "another_page.html",
+    # Path(INPUT_DIRECTORY) / "sample_article.html",
 ]
 #
 # Output format mode:
@@ -58,6 +58,8 @@ TEXT_ONLY_MODE = True
 
 # Allowed file extensions when scanning the input directory in PROCESS_ALL_FILES mode
 HTML_EXTENSIONS = (".html", ".htm")
+
+OUTPUT_EXCEL_FILENAME = "cleaned_output_summary2.xlsx"
 
 # ==============================================================================
 # SECTION 3: CORE CLEANING & NORMALIZATION FUNCTIONS
@@ -80,7 +82,7 @@ def unescape_chrome_source(raw_content: str) -> str:
 
 
 def clean_html_for_llm(
-    html_content: str, extract_text_only: bool = True
+        html_content: str, extract_text_only: bool = True
 ):
     """Generically strips noise (scripts, styles, SVGs, nav, headers, footers)
 
@@ -136,17 +138,18 @@ def clean_html_for_llm(
     clean_html = soup.prettify()
     return re.sub(r"\n\s*\n+", "\n", clean_html).strip(), structured_rows
 
+
 # ==============================================================================
 # SECTION 4: FILE BATCH PROCESSING PIPELINE
 # ==============================================================================
 
 def process_file_list(
-    input_dir: str,
-    output_dir: str,
-    process_all: bool = True,
-    file_list: list = None,
-    text_only: bool = True,
-    extensions: tuple = HTML_EXTENSIONS,
+        input_dir: str,
+        output_dir: str,
+        process_all: bool = True,
+        file_list: list = None,
+        text_only: bool = True,
+        extensions: tuple = HTML_EXTENSIONS,
 ):
     """Processes either ALL HTML files in input_dir or an explicit list of file paths,
     and outputs each to a separate cleaned file in output_dir along with an Excel file.
@@ -173,57 +176,71 @@ def process_file_list(
         f"Starting batch process for {len(target_files)} file(s). Output target: '{output_path.resolve()}'\n"
     )
 
-    for file_path in target_files:
-        if not file_path.exists():
-            print(f"[✘] Skipping (File not found): {file_path.name}")
-            continue
+    excel_file = output_path / OUTPUT_EXCEL_FILENAME
 
-        # Construct separate output file path
-        ext = ".txt" if text_only else file_path.suffix
-        output_file = output_path / f"{file_path.stem}_cleaned{ext}"
-        excel_file = output_path / f"{file_path.stem}_cleaned.xlsx"
+    with pd.ExcelWriter(excel_file, engine="openpyxl") as writer:
+        tab_counter = 1
+        for file_path in target_files:
+            if not file_path.exists():
+                print(f"[✘] Skipping (File not found): {file_path.name}")
+                continue
 
-        # Pre-check if the destination output file already exists prior to writing
-        file_already_exists = output_file.exists()
+            # Construct separate output file path
+            ext = ".txt" if text_only else file_path.suffix
+            output_file = output_path / f"{file_path.stem}_cleaned{ext}"
 
-        try:
-            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-                raw_data = f.read()
+            # Pre-check if the destination output file already exists prior to writing
+            file_already_exists = output_file.exists()
 
-            # Step 1: Normalize source-view wrapper format
-            normalized_html = unescape_chrome_source(raw_data)
+            try:
+                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                    raw_data = f.read()
 
-            # Step 2: Strip HTML noise & extract structured data for Excel
-            cleaned_content, excel_data = clean_html_for_llm(
-                normalized_html, extract_text_only=text_only
-            )
+                # Step 1: Normalize source-view wrapper format
+                normalized_html = unescape_chrome_source(raw_data)
 
-            # Step 3: Write out to its own separate file
-            with open(output_file, "w", encoding="utf-8") as f:
-                f.write(cleaned_content)
-
-            # Step 4: Write out to Excel file (Tag in Column A, Data in Column B)
-            df = pd.DataFrame(excel_data, columns=["Tag", "Content"])
-            df.to_excel(excel_file, index=False)
-
-            reduction = (
-                ((len(raw_data) - len(cleaned_content)) / len(raw_data)) * 100
-                if raw_data
-                else 0
-            )
-
-            # Explicitly log whether the file was newly created or overwritten
-            if file_already_exists:
-                print(
-                    f"[⇄ Overwrite] {file_path.name} -> {output_file.name} & {excel_file.name} ({reduction:.1f}% size reduction)"
-                )
-            else:
-                print(
-                    f"[✔ Created]   {file_path.name} -> {output_file.name} & {excel_file.name} ({reduction:.1f}% size reduction)"
+                # Step 2: Strip HTML noise & extract structured data for Excel
+                cleaned_content, excel_data = clean_html_for_llm(
+                    normalized_html, extract_text_only=text_only
                 )
 
-        except Exception as e:
-            print(f"[✘] Error processing {file_path.name}: {e}")
+                # Step 3: Write out to its own separate file
+                with open(output_file, "w", encoding="utf-8") as f:
+                    f.write(cleaned_content)
+
+                # Step 4: Write out to Excel tab (Tag in Column A, Data in Column B starting at row 3)
+                sheet_name = f"C{tab_counter}"
+
+                # Write unique input file name label in Cell A1
+                pd.DataFrame([f"Source File: {file_path.name}"]).to_excel(
+                    writer, sheet_name=sheet_name, startrow=0, startcol=0, header=False, index=False
+                )
+
+                # Write data starting at Row 3 (startrow=2 in 0-indexed pandas)
+                df = pd.DataFrame(excel_data, columns=["Tag", "Content"])
+                df.to_excel(writer, sheet_name=sheet_name, startrow=2, index=False)
+
+                tab_counter += 1
+
+                reduction = (
+                    ((len(raw_data) - len(cleaned_content)) / len(raw_data)) * 100
+                    if raw_data
+                    else 0
+                )
+
+                # Explicitly log whether the file was newly created or overwritten
+                if file_already_exists:
+                    print(
+                        f"[⇄ Overwrite] {file_path.name} -> {output_file.name} & Sheet '{sheet_name}' ({reduction:.1f}% size reduction)"
+                    )
+                else:
+                    print(
+                        f"[✔ Created]   {file_path.name} -> {output_file.name} & Sheet '{sheet_name}' ({reduction:.1f}% size reduction)"
+                    )
+
+            except Exception as e:
+                print(f"[✘] Error processing {file_path.name}: {e}")
+
 
 # ==============================================================================
 # SECTION 5: MAIN EXECUTION ENTRY POINT

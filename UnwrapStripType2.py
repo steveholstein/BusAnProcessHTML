@@ -21,29 +21,39 @@ from pathlib import Path
 from bs4 import BeautifulSoup
 
 # ==============================================================================
-# SECTION 2: CONFIGURATION / PARAMETERS (Edit these in PyCharm)
+# SECTION 2: CONFIGURATION / PARAMETERS & TOGGLES (Edit these in PyCharm)
 # ==============================================================================
 
 # Input and Output Directories
 INPUT_DIRECTORY = r"C:\Stevedrive\BusNewsAn\InputhtmlSources"
 OUTPUT_DIRECTORY = r"C:\Stevedrive\BusNewsAn\OutputSourcesforLLM"
 
+# --- USER TOGGLES ---
+
 # Mode Toggle for Input File Selection:
 # True  -> Automatically process EVERY file of type .html (or .htm) inside INPUT_DIRECTORY
 # False -> Process ONLY the explicitly specified files in the INPUT_FILES list below
-PROCESS_ALL_FILES = True
+# DIRECTLY INCORPORATED IN: Section 5 (Main execution -> process_file_list parameter 'process_all')
+#                           Section 4 (Controls file selection branching in process_file_list)
+#
 
+PROCESS_ALL_FILES = False
+#
 # Specify individual files located inside INPUT_DIRECTORY (Used when PROCESS_ALL_FILES = False)
 INPUT_FILES = [
-    Path(INPUT_DIRECTORY) / "view-source_https___www.afr.com_companies30Jul26.html",
+    Path(INPUT_DIRECTORY) / "view-source_https___au.investing.com_news_transcripts.html",
     #Path(INPUT_DIRECTORY) / "another_page.html",
     #Path(INPUT_DIRECTORY) / "sample_article.html",
 ]
-
+#
 # Output format mode:
 # True  -> Output clean plain text/markdown (Recommended for LLMs - lowest token cost)
 # False -> Output simplified HTML structure (Stripped of CSS/JS/Nav/Ads)
+# DIRECTLY INCORPORATED IN: Section 5 (Main execution -> process_file_list parameter 'text_only')
+#                           Section 4 (Passed into clean_html_for_llm in Section 3)
 TEXT_ONLY_MODE = True
+
+# --- OTHER CONFIGURATION ---
 
 # Allowed file extensions when scanning the input directory in PROCESS_ALL_FILES mode
 HTML_EXTENSIONS = (".html", ".htm")

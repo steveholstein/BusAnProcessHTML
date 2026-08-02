@@ -8,7 +8,7 @@ using BeautifulSoup, leaving only clean semantic markup or plain text.
 NOTE that sample file for this code came from:
 view-source_https___www.afr.com_companies30Jul26.html
 
-pip install beautifulsoup4
+pip install beautifulsoup4 pandas openpyxl
 """
 
 # ==============================================================================
@@ -18,7 +18,8 @@ pip install beautifulsoup4
 import html
 import re
 from pathlib import Path
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString
+import pandas as pd
 
 # ==============================================================================
 # SECTION 2: CONFIGURATION / PARAMETERS & TOGGLES (Edit these in PyCharm)
@@ -37,11 +38,11 @@ OUTPUT_DIRECTORY = r"C:\Stevedrive\BusNewsAn\OutputSourcesforLLM"
 #                           Section 4 (Controls file selection branching in process_file_list)
 #
 
-PROCESS_ALL_FILES = False
+PROCESS_ALL_FILES = True
 #
 # Specify individual files located inside INPUT_DIRECTORY (Used when PROCESS_ALL_FILES = False)
 INPUT_FILES = [
-    Path(INPUT_DIRECTORY) / "view-source_https___au.investing.com_news_transcripts.html",
+    Path(INPUT_DIRECTORY) / "view-source_https___www.afr.com_companies.html",
     #Path(INPUT_DIRECTORY) / "another_page.html",
     #Path(INPUT_DIRECTORY) / "sample_article.html",
 ]
@@ -80,10 +81,11 @@ def unescape_chrome_source(raw_content: str) -> str:
 
 def clean_html_for_llm(
     html_content: str, extract_text_only: bool = True
-) -> str:
+):
     """Generically strips noise (scripts, styles, SVGs, nav, headers, footers)
 
     from an HTML document to optimize context for LLMs.
+    Returns clean text/html string AND structured tag-data pairs for Excel generation.
     """
     soup = BeautifulSoup(html_content, "html.parser")
 
@@ -110,16 +112,29 @@ def clean_html_for_llm(
             k: v for k, v in tag.attrs.items() if k.lower() in allowed_attrs
         }
 
+    # Extract structured content for Excel export (Tag Name in Column A, Text in Column B)
+    structured_rows = []
+    for element in soup.find_all(True):
+        # Only take direct non-empty text strings to prevent duplicate ancestor text
+        direct_text = "".join(
+            child for child in element.children if isinstance(child, NavigableString)
+        ).strip()
+
+        if direct_text:
+            # HTML tag name acts as the consistent identifying class/type tag
+            tag_name = element.name.lower()
+            structured_rows.append((tag_name, direct_text))
+
     if extract_text_only:
         # Extract pure readable text line by line
         text = soup.get_text(separator="\n")
         # Collapse multiple blank lines
         cleaned_text = re.sub(r"\n\s*\n+", "\n\n", text).strip()
-        return cleaned_text
+        return cleaned_text, structured_rows
 
     # Return clean HTML structure without clutter
     clean_html = soup.prettify()
-    return re.sub(r"\n\s*\n+", "\n", clean_html).strip()
+    return re.sub(r"\n\s*\n+", "\n", clean_html).strip(), structured_rows
 
 # ==============================================================================
 # SECTION 4: FILE BATCH PROCESSING PIPELINE
@@ -134,7 +149,7 @@ def process_file_list(
     extensions: tuple = HTML_EXTENSIONS,
 ):
     """Processes either ALL HTML files in input_dir or an explicit list of file paths,
-    and outputs each to a separate cleaned file in output_dir.
+    and outputs each to a separate cleaned file in output_dir along with an Excel file.
     """
     input_path = Path(input_dir)
     output_path = Path(output_dir)
@@ -166,6 +181,7 @@ def process_file_list(
         # Construct separate output file path
         ext = ".txt" if text_only else file_path.suffix
         output_file = output_path / f"{file_path.stem}_cleaned{ext}"
+        excel_file = output_path / f"{file_path.stem}_cleaned.xlsx"
 
         # Pre-check if the destination output file already exists prior to writing
         file_already_exists = output_file.exists()
@@ -177,14 +193,18 @@ def process_file_list(
             # Step 1: Normalize source-view wrapper format
             normalized_html = unescape_chrome_source(raw_data)
 
-            # Step 2: Strip HTML noise
-            cleaned_content = clean_html_for_llm(
+            # Step 2: Strip HTML noise & extract structured data for Excel
+            cleaned_content, excel_data = clean_html_for_llm(
                 normalized_html, extract_text_only=text_only
             )
 
             # Step 3: Write out to its own separate file
             with open(output_file, "w", encoding="utf-8") as f:
                 f.write(cleaned_content)
+
+            # Step 4: Write out to Excel file (Tag in Column A, Data in Column B)
+            df = pd.DataFrame(excel_data, columns=["Tag", "Content"])
+            df.to_excel(excel_file, index=False)
 
             reduction = (
                 ((len(raw_data) - len(cleaned_content)) / len(raw_data)) * 100
@@ -195,11 +215,11 @@ def process_file_list(
             # Explicitly log whether the file was newly created or overwritten
             if file_already_exists:
                 print(
-                    f"[⇄ Overwrite] {file_path.name} -> {output_file.name} ({reduction:.1f}% size reduction)"
+                    f"[⇄ Overwrite] {file_path.name} -> {output_file.name} & {excel_file.name} ({reduction:.1f}% size reduction)"
                 )
             else:
                 print(
-                    f"[✔ Created]   {file_path.name} -> {output_file.name} ({reduction:.1f}% size reduction)"
+                    f"[✔ Created]   {file_path.name} -> {output_file.name} & {excel_file.name} ({reduction:.1f}% size reduction)"
                 )
 
         except Exception as e:

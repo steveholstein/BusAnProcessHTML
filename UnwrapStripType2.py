@@ -47,7 +47,7 @@ INPUT_FILES = [
 ]
 #
 # Output format mode:
-# True  -> Output clan plain text/markdown (Recommended for LLMs - lowest token cost)
+# True  -> Output clean plain text/markdown (Recommended for LLMs - lowest token cost)
 # False -> Output simplified HTML structure (Stripped of CSS/JS/Nav/Ads)
 # DIRECTLY INCORPORATED IN: Section 5 (Main execution -> process_file_list parameter 'text_only')
 #                           Section 4 (Passed into clean_html_for_llm in Section 3)

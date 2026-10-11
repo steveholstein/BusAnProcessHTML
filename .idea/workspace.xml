@@ -5,6 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c54595f4-69ee-435b-a80a-288ae490b7d6" name="Changes" comment="x">
+      <change afterPath="$PROJECT_DIR$/CleanFilev1.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/CleanFilev2.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Datafrom__yfinance.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/UnwrapStripType3.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -22,21 +26,21 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
-  "lastFilter": {
-    "state": "OPEN",
-    "assignee": "steveholstein"
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;steveholstein&quot;
   }
-}]]></component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/steveholstein/BusAnProcessHTML.git",
-    "accountId": "c296c688-c71e-46e9-b5e1-49b32b6c3c26"
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/steveholstein/BusAnProcessHTML.git&quot;,
+    &quot;accountId&quot;: &quot;c296c688-c71e-46e9-b5e1-49b32b6c3c26&quot;
   }
-}]]></component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 8
-}]]></component>
+}</component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 8
+}</component>
   <component name="ProjectId" id="3HKresaDATQ9JvAg3HTHmEz2NqL" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
@@ -45,14 +49,26 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Python.ASXOfficalCoData.executor": "Run",
+    "Python.CleanFilev1.executor": "Run",
+    "Python.CleanFilev2.executor": "Run",
+    "Python.Datafrom__yfinance.executor": "Run",
     "Python.UnwrapStripType1.executor": "Run",
     "Python.UnwrapStripType2.executor": "Run",
+    "Python.UnwrapStripType3.executor": "Run",
+    "Python.yfinance.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
     "git-widget-placeholder": "master",
-    "ignore.virus.scanning.warn.message": "true"
+    "ignore.virus.scanning.warn.message": "true",
+    "last_opened_file_path": "C:/Users/hello/PycharmProjects/BusAnProcessHTML"
   }
 }]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\hello\PycharmProjects\BusAnProcessHTML" />
+    </key>
+  </component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
@@ -116,7 +132,15 @@
       <option name="project" value="LOCAL" />
       <updated>1785656745975</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="x">
+      <option name="closed" value="true" />
+      <created>1785670826587</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1785670826587</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">

@@ -4,13 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="c54595f4-69ee-435b-a80a-288ae490b7d6" name="Changes" comment="x">
-      <change afterPath="$PROJECT_DIR$/CleanFilev1.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CleanFilev2.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Datafrom__yfinance.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/UnwrapStripType3.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-    </list>
+    <list default="true" id="c54595f4-69ee-435b-a80a-288ae490b7d6" name="Changes" comment="x" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -140,7 +134,15 @@
       <option name="project" value="LOCAL" />
       <updated>1785670826587</updated>
     </task>
-    <option name="localTasksCounter" value="8" />
+    <task id="LOCAL-00008" summary="x">
+      <option name="closed" value="true" />
+      <created>1791713027785</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1791713027785</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">

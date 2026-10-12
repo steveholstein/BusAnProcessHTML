@@ -39,6 +39,7 @@ Key Prerequisites:
 
 import html
 import re
+from datetime import datetime
 from pathlib import Path
 from typing import Optional, Union
 
@@ -302,8 +303,8 @@ class HeuristicNewsFilter:
 # WHAT THIS SECTION ACHIEVES:
 #   Controls the end-to-end processing loop across all target files. It reads raw
 #   HTML, executes Stage 1 cleaning, records audit entries in multi-sheet Excel
-#   workbooks (for both cleaned data and refined headlines), and hands data
-#   directly to Stage 2 for headline extraction.
+#   workbooks (only when PROCESS_ALL_FILES is True), and hands data directly to
+#   Stage 2 for headline extraction.
 #
 # HOW IT FITS INTO THE PROCESS FLOW:
 #   Acts as the operational engine that connects Stage 1 and Stage 2, coordinating
@@ -313,14 +314,14 @@ class HeuristicNewsFilter:
 #   - Intermediate Cleaned CSVs: Populates files named '<source_name>_cleaned.csv'
 #     containing two columns: 'Tag' and 'Content'.
 #   - Consolidated Cleaned Excel Workbook: Populates 'cleaned_output_summary2.xlsx' with a
-#     dedicated sheet ('C1', 'C2', ...) per processed source file. Cell A1 records
-#     the source file name, and table data begins at Row 3.
+#     dedicated sheet ('C1', 'C2', ...) per processed source file (when process_all=True),
+#     with source file name in A1 and source date in A2.
 #   - Final Refined News CSVs: When Stage 2 is enabled, populates files named
 #     '<source_name>_refined.csv' containing candidate headlines organized by
 #     'Item_No', 'Tag', and 'Content'.
 #   - Consolidated Refined Excel Workbook: Populates 'refined_output_summary2.xlsx' with a
-#     dedicated sheet ('R1', 'R2', ...) per processed source file matching the layout of
-#     the cleaned workbook.
+#     dedicated sheet ('R1', 'R2', ...) per processed source file (when process_all=True),
+#     with source file name in A1 and source date in A2.
 # ==============================================================================
 
 def process_pipeline(
@@ -347,74 +348,86 @@ def process_pipeline(
         print("[!] No target files found.")
         return
 
-    excel_cleaned_path = output_dir / OUTPUT_EXCEL_FILENAME
-    excel_refined_path = output_dir / REFINED_EXCEL_FILENAME
+    # Initialize Excel summary workbooks ONLY if process_all is True
+    clean_writer = (
+        pd.ExcelWriter(output_dir / OUTPUT_EXCEL_FILENAME, engine="openpyxl")
+        if process_all
+        else None
+    )
+    refined_writer = (
+        pd.ExcelWriter(output_dir / REFINED_EXCEL_FILENAME, engine="openpyxl")
+        if (process_all and cleaner and text_only)
+        else None
+    )
 
-    with pd.ExcelWriter(excel_cleaned_path, engine="openpyxl") as clean_writer:
-        refined_writer = (
-            pd.ExcelWriter(excel_refined_path, engine="openpyxl")
-            if (cleaner and text_only)
-            else None
-        )
+    try:
+        for tab_idx, file_path in enumerate(target_files, start=1):
+            if not file_path.exists():
+                print(f"[✘] Missing: {file_path.name}")
+                continue
 
-        try:
-            for tab_idx, file_path in enumerate(target_files, start=1):
-                if not file_path.exists():
-                    print(f"[✘] Missing: {file_path.name}")
-                    continue
+            try:
+                # Retrieve file date and build cell A1 (Source) & cell A2 (Date) header metadata
+                file_date = datetime.fromtimestamp(file_path.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+                metadata_header = pd.DataFrame([
+                    [f"Source: {file_path.name}"],  # Cell A1
+                    [f"Date: {file_date}"]          # Cell A2
+                ])
 
-                try:
-                    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-                        raw_data = f.read()
+                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                    raw_data = f.read()
 
-                    # Stage 1: Clean HTML & extract tag-content rows
-                    normalized_html = unescape_chrome_source(raw_data)
-                    cleaned_text, structured_rows = clean_html_for_llm(normalized_html, extract_text_only=text_only)
-                    df_clean = pd.DataFrame(structured_rows, columns=["Tag", "Content"])
+                # Stage 1: Clean HTML & extract tag-content rows
+                normalized_html = unescape_chrome_source(raw_data)
+                cleaned_text, structured_rows = clean_html_for_llm(normalized_html, extract_text_only=text_only)
+                df_clean = pd.DataFrame(structured_rows, columns=["Tag", "Content"])
 
-                    # Output Stage 1 CSV / HTML
-                    output_ext = ".csv" if text_only else file_path.suffix
-                    output_file = output_dir / f"{file_path.stem}_cleaned{output_ext}"
-                    is_overwrite = output_file.exists()
+                # Output Stage 1 CSV / HTML
+                output_ext = ".csv" if text_only else file_path.suffix
+                output_file = output_dir / f"{file_path.stem}_cleaned{output_ext}"
+                is_overwrite = output_file.exists()
 
-                    if text_only:
-                        df_clean.to_csv(output_file, index=False, encoding="utf-8")
-                    else:
-                        output_file.write_text(cleaned_text, encoding="utf-8")
+                if text_only:
+                    df_clean.to_csv(output_file, index=False, encoding="utf-8")
+                else:
+                    output_file.write_text(cleaned_text, encoding="utf-8")
 
-                    # Append to Cleaned Excel summary sheet (C1, C2, ...)
+                # Append to Cleaned Excel summary sheet (C1, C2, ...) only if writer exists
+                if clean_writer:
                     sheet_name = f"C{tab_idx}"
-                    pd.DataFrame([f"Source: {file_path.name}"]).to_excel(
+                    metadata_header.to_excel(
                         clean_writer, sheet_name=sheet_name, startrow=0, startcol=0, header=False, index=False
                     )
-                    df_clean.to_excel(clean_writer, sheet_name=sheet_name, startrow=2, index=False)
+                    df_clean.to_excel(clean_writer, sheet_name=sheet_name, startrow=3, index=False)
 
-                    status = "[⇄ Overwrite]" if is_overwrite else "[✔ Created]"
-                    reduction = ((len(raw_data) - len(cleaned_text)) / len(raw_data) * 100) if raw_data else 0
-                    print(f"{status} {file_path.name} -> {output_file.name} (Size reduction: {reduction:.1f}%)")
+                status = "[⇄ Overwrite]" if is_overwrite else "[✔ Created]"
+                reduction = ((len(raw_data) - len(cleaned_text)) / len(raw_data) * 100) if raw_data else 0
+                print(f"{status} {file_path.name} -> {output_file.name} (Size reduction: {reduction:.1f}%)")
 
-                    # Stage 2: In-memory headline refinement
-                    if cleaner and text_only:
-                        refined_df = cleaner.refine_dataframe(df_clean)
-                        refined_file = output_dir / f"{file_path.stem}_refined.csv"
-                        refined_df.to_csv(refined_file, index=False, encoding="utf-8")
+                # Stage 2: In-memory headline refinement
+                if cleaner and text_only:
+                    refined_df = cleaner.refine_dataframe(df_clean)
+                    refined_file = output_dir / f"{file_path.stem}_refined.csv"
+                    refined_df.to_csv(refined_file, index=False, encoding="utf-8")
 
-                        # Append to Refined Excel summary sheet (R1, R2, ...)
-                        if refined_writer:
-                            refined_sheet_name = f"R{tab_idx}"
-                            pd.DataFrame([f"Source: {file_path.name}"]).to_excel(
-                                refined_writer, sheet_name=refined_sheet_name, startrow=0, startcol=0, header=False, index=False
-                            )
-                            refined_df.to_excel(refined_writer, sheet_name=refined_sheet_name, startrow=2, index=False)
+                    # Append to Refined Excel summary sheet (R1, R2, ...) only if writer exists
+                    if refined_writer:
+                        refined_sheet_name = f"R{tab_idx}"
+                        metadata_header.to_excel(
+                            refined_writer, sheet_name=refined_sheet_name, startrow=0, startcol=0, header=False, index=False
+                        )
+                        refined_df.to_excel(refined_writer, sheet_name=refined_sheet_name, startrow=3, index=False)
 
-                        print(f"    ↳ [Stage 2] {len(refined_df)} headlines saved -> {refined_file.name}")
+                    print(f"    ↳ [Stage 2] {len(refined_df)} headlines saved -> {refined_file.name}")
 
-                except Exception as e:
-                    print(f"[✘] Error processing {file_path.name}: {e}")
-        finally:
-            if refined_writer:
-                refined_writer.close()
-
+            except Exception as e:
+                print(f"[✘] Error processing {file_path.name}: {e}")
+    finally:
+        # Safely save and close open workbooks
+        if clean_writer:
+            clean_writer.close()
+        if refined_writer:
+            refined_writer.close()
 
 # ==============================================================================
 # SECTION 6: MAIN EXECUTION ENTRY POINT
@@ -444,3 +457,4 @@ if __name__ == "__main__":
         text_only=TEXT_ONLY_MODE,
         run_stage2=RUN_STAGE_2_FILTER,
     )
+
